@@ -1,0 +1,102 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  email     String   @unique
+  company   String?
+  phone     String?
+  customFields String? // JSON string for additional fields like position, location etc.
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sentEmails    SentEmail[]
+  receivedEmails ReceivedEmail[]
+}
+
+model EmailTemplate {
+  id        String   @id @default(cuid())
+  name      String
+  subject   String   // e.g. "Hello {{name}}, welcome aboard!"
+  body      String   // template body with {{placeholders}}
+  category  String   @default("general") // general, marketing, notification, followup
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  sentEmails SentEmail[]
+}
+
+model SentEmail {
+  id         String   @id @default(cuid())
+  contactId  String
+  templateId String?
+  toEmail    String
+  toName     String?
+  subject    String
+  body       String
+  status     String   @default("pending") // pending, sent, failed
+  error      String?
+  sentAt     DateTime?
+  createdAt  DateTime @default(now())
+
+  contact  Contact      @relation(fields: [contactId], references: [id])
+  template EmailTemplate? @relation(fields: [templateId], references: [id])
+}
+
+model ReceivedEmail {
+  id          String   @id @default(cuid())
+  contactId   String?
+  fromEmail   String
+  fromName    String?
+  subject     String
+  body        String?
+  isRead      Boolean  @default(false)
+  isFlagged   Boolean  @default(false)
+  flagReason  String?
+  autoReplied Boolean  @default(false)
+  replyRuleId String?
+  receivedAt  DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  contact   Contact?      @relation(fields: [contactId], references: [id])
+  replyRule ResponseRule?  @relation(fields: [replyRuleId], references: [id])
+}
+
+model ResponseRule {
+  id          String   @id @default(cuid())
+  name        String
+  description String?
+  conditions  String   // JSON: [{field: "subject", operator: "contains", value: "unsubscribe"}]
+  replyTemplate String  // template body for auto-reply
+  isActive    Boolean  @default(true)
+  priority    Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  receivedEmails ReceivedEmail[]
+}
+
+model ActivityLog {
+  id        String   @id @default(cuid())
+  action    String   // SENT, RECEIVED, AUTO_REPLY, BULK_SEND, RULE_TRIGGERED
+  category  String   // email, contact, template, rule, system
+  details   String?  // JSON with additional context
+  status    String   @default("success") // success, error, warning
+  createdAt DateTime @default(now())
+}
+
+model EmailConfig {
+  id        String   @id @default(cuid())
+  key       String   @unique // smtp_host, smtp_port, imap_host, imap_port, email_address, etc.
+  value     String
+  isEncrypted Boolean @default(false)
+  updatedAt DateTime @updatedAt
+}
