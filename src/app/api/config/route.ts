@@ -1,13 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
 
-// GET /api/config
+// Keys that contain secrets — never return their values
+const SECRET_KEYS = ['smtp_password'];
+
+// GET /api/config — returns all config, masks secrets
 export async function GET() {
   try {
     const configs = await db.emailConfig.findMany();
     const configMap: Record<string, string> = {};
     for (const c of configs) {
-      configMap[c.key] = c.isEncrypted ? '[ENCRYPTED]' : c.value;
+      if (SECRET_KEYS.includes(c.key)) {
+        // Only reveal that a value exists, not the value itself
+        configMap[c.key] = c.value ? '********' : '';
+      } else {
+        configMap[c.key] = c.value;
+      }
     }
     return NextResponse.json(configMap);
   } catch (error) {
@@ -27,6 +35,9 @@ export async function POST(request: NextRequest) {
     }
 
     for (const [key, value] of Object.entries(configs)) {
+      // If the value is the masked placeholder, skip updating (user didn't change it)
+      if (SECRET_KEYS.includes(key) && value === '********') continue;
+
       await db.emailConfig.upsert({
         where: { key },
         update: { value, updatedAt: new Date() },

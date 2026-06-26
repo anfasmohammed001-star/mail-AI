@@ -1,7 +1,84 @@
 import { NextRequest, NextResponse } from 'next/server';
+import nodemailer from 'nodemailer';
 import { db } from '@/lib/db';
 
-// GET /api/emails?type=sent|received
+// ---------- SMTP helper ----------
+
+interface SmtpConfig {
+  host: string;
+  port: number;
+  email: string;
+  password: string;
+  fromName: string;
+  secure: boolean;
+}
+
+async function getSmtpConfig(): Promise<SmtpConfig | null> {
+  const configs = await db.emailConfig.findMany();
+  const map: Record<string, string> = {};
+  for (const c of configs) map[c.key] = c.value;
+
+  if (!map.smtp_host || !map.smtp_email || !map.smtp_password) return null;
+
+  return {
+    host: map.smtp_host,
+    port: parseInt(map.smtp_port || '587', 10),
+    email: map.smtp_email,
+    password: map.smtp_password,
+    fromName: map.smtp_from_name || map.smtp_email,
+    secure: map.smtp_secure === 'true',
+  };
+}
+
+async function createTransport(config: SmtpConfig) {
+  return nodemailer.createTransport({
+    host: config.host,
+    port: config.port,
+    secure: config.secure,
+    auth: {
+      user: config.email,
+      pass: config.password,
+    },
+  });
+}
+
+async function sendRealEmail(
+  config: SmtpConfig,
+  toEmail: string,
+  toName: string,
+  subject: string,
+  htmlBody: string
+): Promise<{ success: boolean; error?: string; messageId?: string }> {
+  const transport = await createTransport(config);
+  try {
+    const info = await transport.sendMail({
+      from: `"${config.fromName}" <${config.email}>`,
+      to: toName ? `"${toName}" <${toEmail}>` : toEmail,
+      subject,
+      html: htmlBody.replace(/\n/g, '<br />'),
+      text: htmlBody,
+    });
+    transport.close();
+    return { success: true, messageId: info.messageId };
+  } catch (err: unknown) {
+    transport.close();
+    const message = err instanceof Error ? err.message : 'Unknown SMTP error';
+    return { success: false, error: message };
+  }
+}
+
+// ---------- fillPlaceholders ----------
+
+function fillPlaceholders(text: string, data: Record<string, string | null | undefined>): string {
+  let result = text;
+  for (const [key, value] of Object.entries(data)) {
+    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value || `{{${key}}}`);
+  }
+  return result;
+}
+
+// ---------- GET ----------
+
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
@@ -26,7 +103,8 @@ export async function GET(request: NextRequest) {
   }
 }
 
-// POST /api/emails — send a single email or bulk send
+// ---------- POST ----------
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
@@ -58,7 +136,6 @@ async function handleSingleSend(data: {
   let finalSubject = subject || '';
   let finalBody = emailBody || '';
 
-  // If contactId is provided, get contact details
   if (contactId) {
     const contact = await db.contact.findUnique({ where: { id: contactId } });
     if (contact) {
@@ -67,7 +144,6 @@ async function handleSingleSend(data: {
     }
   }
 
-  // If templateId is provided, get template and fill placeholders
   if (templateId) {
     const template = await db.emailTemplate.findUnique({ where: { id: templateId } });
     if (template) {
@@ -80,7 +156,26 @@ async function handleSingleSend(data: {
     return NextResponse.json({ error: 'Missing required fields: toEmail, subject, body' }, { status: 400 });
   }
 
-  // Simulate email sending (in production, this would use SMTP/Gmail API)
+  // Try real SMTP send
+  const smtpConfig = await getSmtpConfig();
+  let sendStatus: 'sent' | 'failed' = 'sent';
+  let sendError: string | null = null;
+  let messageId: string | null = null;
+
+  if (smtpConfig) {
+    const result = await sendRealEmail(smtpConfig, finalToEmail, finalToName, finalSubject, finalBody);
+    if (!result.success) {
+      sendStatus = 'failed';
+      sendError = result.error || 'SMTP error';
+    } else {
+      messageId = result.messageId || null;
+    }
+  } else {
+    // No SMTP configured — mark as failed with helpful message
+    sendStatus = 'failed';
+    sendError = 'SMTP not configured. Go to Settings to add your SMTP credentials.';
+  }
+
   const sentEmail = await db.sentEmail.create({
     data: {
       contactId: contactId || '',
@@ -89,8 +184,9 @@ async function handleSingleSend(data: {
       toName: finalToName,
       subject: finalSubject,
       body: finalBody,
-      status: 'sent',
-      sentAt: new Date(),
+      status: sendStatus,
+      error: sendError,
+      sentAt: sendStatus === 'sent' ? new Date() : null,
     },
   });
 
@@ -98,9 +194,20 @@ async function handleSingleSend(data: {
     data: {
       action: 'SENT',
       category: 'email',
-      details: JSON.stringify({ sentEmailId: sentEmail.id, to: finalToEmail, subject: finalSubject }),
+      status: sendStatus === 'sent' ? 'success' : 'error',
+      details: JSON.stringify({
+        sentEmailId: sentEmail.id,
+        to: finalToEmail,
+        subject: finalSubject,
+        smtpUsed: !!smtpConfig,
+        messageId,
+      }),
     },
   });
+
+  if (sendStatus === 'failed') {
+    return NextResponse.json({ error: sendError, sentEmail }, { status: 422 });
+  }
 
   return NextResponse.json(sentEmail, { status: 201 });
 }
@@ -124,9 +231,11 @@ async function handleBulkSend(
     template = await db.emailTemplate.findUnique({ where: { id: templateId } });
   }
 
+  const smtpConfig = await getSmtpConfig();
   const results = [];
   let successCount = 0;
   let failCount = 0;
+  const errors: string[] = [];
 
   for (const contact of contacts) {
     try {
@@ -138,7 +247,20 @@ async function handleBulkSend(
         ? fillPlaceholders(template.body, { name: contact.name, email: contact.email, company: contact.company || '' })
         : fillPlaceholders(body || '', { name: contact.name, email: contact.email, company: contact.company || '' });
 
-      // Simulate sending — in production, use SMTP or Gmail API
+      let sendStatus: 'sent' | 'failed' = 'sent';
+      let sendError: string | null = null;
+
+      if (smtpConfig) {
+        const result = await sendRealEmail(smtpConfig, contact.email, contact.name, emailSubject, emailBody);
+        if (!result.success) {
+          sendStatus = 'failed';
+          sendError = result.error || 'SMTP error';
+        }
+      } else {
+        sendStatus = 'failed';
+        sendError = 'SMTP not configured. Go to Settings to add your SMTP credentials.';
+      }
+
       const sentEmail = await db.sentEmail.create({
         data: {
           contactId: contact.id,
@@ -147,15 +269,26 @@ async function handleBulkSend(
           toName: contact.name,
           subject: emailSubject,
           body: emailBody,
-          status: 'sent',
-          sentAt: new Date(),
+          status: sendStatus,
+          error: sendError,
+          sentAt: sendStatus === 'sent' ? new Date() : null,
         },
       });
 
       results.push(sentEmail);
-      successCount++;
-    } catch {
+
+      if (sendStatus === 'sent') {
+        successCount++;
+      } else {
+        failCount++;
+        if (sendError && !errors.includes(sendError)) {
+          errors.push(sendError);
+        }
+      }
+    } catch (err: unknown) {
       failCount++;
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      if (!errors.includes(msg)) errors.push(msg);
       await db.sentEmail.create({
         data: {
           contactId: contact.id,
@@ -165,7 +298,7 @@ async function handleBulkSend(
           subject: '',
           body: '',
           status: 'failed',
-          error: 'Failed to send',
+          error: msg,
         },
       });
     }
@@ -175,13 +308,15 @@ async function handleBulkSend(
     data: {
       action: 'BULK_SEND',
       category: 'email',
+      status: failCount > 0 ? (successCount > 0 ? 'warning' : 'error') : 'success',
       details: JSON.stringify({
         total: contactIds.length,
         success: successCount,
         failed: failCount,
+        smtpUsed: !!smtpConfig,
+        errors: errors.length > 0 ? errors : undefined,
         templateId: templateId || 'custom',
       }),
-      status: failCount > 0 ? 'warning' : 'success',
     },
   });
 
@@ -189,19 +324,14 @@ async function handleBulkSend(
     total: contactIds.length,
     success: successCount,
     failed: failCount,
+    errors: errors.length > 0 ? errors : undefined,
+    smtpConfigured: !!smtpConfig,
     emails: results,
   }, { status: 201 });
 }
 
-function fillPlaceholders(text: string, data: Record<string, string | null | undefined>): string {
-  let result = text;
-  for (const [key, value] of Object.entries(data)) {
-    result = result.replace(new RegExp(`\\{\\{${key}\\}\\}`, 'g'), value || `{{${key}}}`);
-  }
-  return result;
-}
+// ---------- PUT ----------
 
-// PUT /api/emails — mark received email as read, flagged, etc.
 export async function PUT(request: NextRequest) {
   try {
     const body = await request.json();
@@ -229,7 +359,8 @@ export async function PUT(request: NextRequest) {
   }
 }
 
-// DELETE /api/emails?id=xxx&type=sent|received
+// ---------- DELETE ----------
+
 export async function DELETE(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);

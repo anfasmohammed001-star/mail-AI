@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Progress } from '@/components/ui/progress';
 import { useToast } from '@/hooks/use-toast';
-import { Send, Mail, FileText, Users, Zap, CheckCircle2, XCircle } from 'lucide-react';
+import { Send, Mail, FileText, Users, Zap, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 interface Contact {
   id: string;
@@ -32,6 +32,7 @@ export function ComposeTab() {
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
+  const [smtpConfigured, setSmtpConfigured] = useState(false);
   const [sendProgress, setSendProgress] = useState(0);
   const [sendResult, setSendResult] = useState<{ total: number; success: number; failed: number } | null>(null);
   const [selectedContacts, setSelectedContacts] = useState<Set<string>>(new Set());
@@ -45,10 +46,12 @@ export function ComposeTab() {
     Promise.all([
       fetch('/api/contacts').then((r) => r.json()),
       fetch('/api/templates').then((r) => r.json()),
+      fetch('/api/config').then((r) => r.json()),
     ])
-      .then(([c, t]) => {
+      .then(([c, t, cfg]) => {
         setContacts(c);
         setTemplates(t);
+        setSmtpConfigured(!!(cfg.smtp_host && cfg.smtp_email && cfg.smtp_password && cfg.smtp_password !== '********' && cfg.smtp_password !== ''));
         setLoading(false);
       })
       .catch(() => setLoading(false));
@@ -122,9 +125,10 @@ export function ComposeTab() {
       setSendResult({ total: data.total, success: data.success, failed: data.failed });
 
       if (data.failed === 0) {
-        toast({ title: 'All Emails Sent!', description: `Successfully sent ${data.success} emails.` });
+        toast({ title: 'All Emails Sent!', description: `Successfully sent ${data.success} emails via SMTP.` });
       } else {
-        toast({ title: 'Partial Success', description: `${data.success} sent, ${data.failed} failed.`, variant: 'destructive' });
+        const errorMsg = data.errors?.length > 0 ? data.errors[0] : `${data.failed} failed`;
+        toast({ title: data.success > 0 ? 'Partial Success' : 'Send Failed', description: errorMsg, variant: 'destructive' });
       }
     } catch {
       toast({ title: 'Error', description: 'Failed to send emails.', variant: 'destructive' });
@@ -289,6 +293,19 @@ export function ComposeTab() {
               </div>
             </CardContent>
           </Card>
+        )}
+
+        {/* SMTP Warning */}
+        {!smtpConfigured && (
+          <div className="flex items-start gap-3 p-4 rounded-lg border border-amber-200 bg-amber-50">
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-medium text-amber-900">SMTP not configured</p>
+              <p className="text-xs text-amber-800 mt-0.5">
+                Emails cannot be delivered. Go to <strong>Settings</strong> tab to configure your SMTP credentials (Gmail, Outlook, etc.) first.
+              </p>
+            </div>
+          </div>
         )}
 
         {/* Send Action */}

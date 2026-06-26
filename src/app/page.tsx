@@ -9,7 +9,8 @@ import { ComposeTab } from '@/components/dashboard/compose-tab';
 import { InboxTab } from '@/components/dashboard/inbox-tab';
 import { RulesTab } from '@/components/dashboard/rules-tab';
 import { LogsTab } from '@/components/dashboard/logs-tab';
-import { LayoutDashboard, Users, FileText, Send, Inbox, Shield, ScrollText, Mail } from 'lucide-react';
+import { SettingsTab } from '@/components/dashboard/settings-tab';
+import { LayoutDashboard, Users, FileText, Send, Inbox, Shield, ScrollText, Mail, Settings } from 'lucide-react';
 
 export default function Home() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -71,6 +72,10 @@ export default function Home() {
               <ScrollText className="w-4 h-4 shrink-0" />
               <span className="hidden sm:inline">Logs</span>
             </TabsTrigger>
+            <TabsTrigger value="settings" className="flex items-center gap-2 text-xs sm:text-sm px-3 py-2.5 data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <Settings className="w-4 h-4 shrink-0" />
+              <span className="hidden sm:inline">Settings</span>
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="mt-0">
@@ -93,6 +98,9 @@ export default function Home() {
           </TabsContent>
           <TabsContent value="logs" className="mt-0">
             <LogsTab />
+          </TabsContent>
+          <TabsContent value="settings" className="mt-0">
+            <SettingsTab />
           </TabsContent>
         </Tabs>
       </main>
