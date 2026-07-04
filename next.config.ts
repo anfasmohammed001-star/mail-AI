@@ -8,7 +8,7 @@ const nextConfig: NextConfig = {
   reactStrictMode: false,
   serverExternalPackages: ['nodemailer', 'imapflow', 'mailparser', '@prisma/client', 'prisma'],
   outputFileTracingIncludes: {
-    '/**/*': ['./prisma/db/**/*'],
+    '/**/*': ['./db/**/*', './prisma/db/**/*'],
   },
 };
 

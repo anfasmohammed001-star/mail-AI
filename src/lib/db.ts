@@ -6,9 +6,13 @@ if (process.env.VERCEL) {
   const tmpDbPath = '/tmp/custom.db';
   if (!fs.existsSync(tmpDbPath)) {
     try {
-      const sourceDb = path.join(process.cwd(), 'prisma', 'db', 'custom.db');
-      if (fs.existsSync(sourceDb)) {
-        fs.copyFileSync(sourceDb, tmpDbPath);
+      const sourceDbRoot = path.join(process.cwd(), 'db', 'custom.db');
+      const sourceDbPrisma = path.join(process.cwd(), 'prisma', 'db', 'custom.db');
+      
+      if (fs.existsSync(sourceDbRoot)) {
+        fs.copyFileSync(sourceDbRoot, tmpDbPath);
+      } else if (fs.existsSync(sourceDbPrisma)) {
+        fs.copyFileSync(sourceDbPrisma, tmpDbPath);
       }
     } catch (e) {
       console.error('Failed to copy db to /tmp', e);

@@ -513,7 +513,19 @@ export function SettingsTab() {
               <Switch
                 id="ai_enabled"
                 checked={config.ai_enabled === 'true'}
-                onCheckedChange={(checked) => setConfig({ ...config, ai_enabled: String(checked) })}
+                onCheckedChange={async (checked) => {
+                  const newConfig = { ...config, ai_enabled: String(checked) };
+                  setConfig(newConfig);
+                  try {
+                    await fetch('/api/config', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ configs: newConfig }),
+                    });
+                  } catch (e) {
+                    console.error(e);
+                  }
+                }}
               />
               <div>
                 <Label htmlFor="ai_enabled" className="cursor-pointer text-xs font-bold uppercase">Enable AI Integration</Label>
