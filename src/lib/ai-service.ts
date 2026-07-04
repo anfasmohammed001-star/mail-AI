@@ -33,7 +33,7 @@ function getDefaultModel(provider: string): string {
     case 'openai': return 'gpt-4o-mini';
     case 'gemini': return 'gemini-1.5-flash';
     case 'claude': return 'claude-3-5-sonnet-latest';
-    case 'nvidia_nim': return 'z-ai/glm-5.2';
+    case 'nvidia_nim': return 'zai-org/GLM-5.2';
     default: return '';
   }
 }
@@ -131,27 +131,41 @@ async function callOpenAICompatible(
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
-  const res = await fetch(`${cleanEndpoint}/v1/chat/completions`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: 'system', content: systemPrompt },
-        { role: 'user', content: userPrompt }
-      ],
-      temperature: 0.3,
-      response_format: jsonMode ? { type: 'json_object' } : undefined,
-    }),
-  });
+  try {
+    const res = await fetch(`${cleanEndpoint}/v1/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: 'system', content: systemPrompt },
+          { role: 'user', content: userPrompt }
+        ],
+        temperature: 0.3,
+        response_format: jsonMode ? { type: 'json_object' } : undefined,
+      }),
+    });
 
-  if (!res.ok) {
-    const txt = await res.text();
-    throw new Error(`OpenAI-compatible error: ${res.status} - ${txt}`);
+    if (!res.ok) {
+      // NIM or other endpoints might not support response_format: json_object.
+      // Fallback to non-JSON mode and try to extract JSON later if needed.
+      if (jsonMode) {
+        console.warn('JSON mode failed, retrying callOpenAICompatible without response_format.');
+        return await callOpenAICompatible(endpoint, model, systemPrompt, userPrompt, apiKey, false);
+      }
+      const txt = await res.text();
+      throw new Error(`OpenAI-compatible error: ${res.status} - ${txt}`);
+    }
+
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || '';
+  } catch (err) {
+    if (jsonMode) {
+      console.warn('Exception during JSON mode call, retrying without response_format:', err);
+      return await callOpenAICompatible(endpoint, model, systemPrompt, userPrompt, apiKey, false);
+    }
+    throw err;
   }
-
-  const data = await res.json();
-  return data.choices?.[0]?.message?.content || '';
 }
 
 async function callGemini(

@@ -88,7 +88,7 @@ const AI_PRESETS = [
   { name: 'LM Studio', provider: 'lm_studio', endpoint: 'http://localhost:1234', model: 'meta-llama-3-8b-instruct' },
   { name: 'OpenAI', provider: 'openai', endpoint: 'https://api.openai.com', model: 'gpt-4o-mini' },
   { name: 'Gemini', provider: 'gemini', endpoint: 'https://generativelanguage.googleapis.com', model: 'gemini-1.5-flash' },
-  { name: 'NVIDIA NIM', provider: 'nvidia_nim', endpoint: 'https://integrate.api.nvidia.com', model: 'z-ai/glm-5.2' },
+  { name: 'NVIDIA NIM', provider: 'nvidia_nim', endpoint: 'https://integrate.api.nvidia.com', model: 'zai-org/GLM-5.2' },
 ];
 
 export function SettingsTab() {
