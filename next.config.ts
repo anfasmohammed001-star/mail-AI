@@ -6,7 +6,10 @@ const nextConfig: NextConfig = {
     ignoreBuildErrors: true,
   },
   reactStrictMode: false,
-  serverExternalPackages: ['nodemailer', 'imapflow', 'mailparser'],
+  serverExternalPackages: ['nodemailer', 'imapflow', 'mailparser', '@prisma/client', 'prisma'],
+  outputFileTracingIncludes: {
+    '/**/*': ['./db/**/*'],
+  },
 };
 
 export default nextConfig;
