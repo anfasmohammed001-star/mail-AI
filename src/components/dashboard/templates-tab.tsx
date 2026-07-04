@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
-import { FileText, Pencil, Trash2, Plus, Eye } from 'lucide-react';
+import { FileText, Pencil, Trash2, Plus, Eye, Sparkles, RefreshCw } from 'lucide-react';
 
 interface Template {
   id: string;
@@ -45,9 +45,49 @@ export function TemplatesTab() {
 
   useEffect(() => { fetchTemplates(); }, [fetchTemplates]);
 
+  // AI Generation States
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiTone, setAiTone] = useState('formal');
+  const [generating, setGenerating] = useState(false);
+
   const resetForm = () => {
     setForm({ name: '', subject: '', body: '', category: 'general' });
     setEditingTemplate(null);
+    setAiPrompt('');
+    setAiTone('formal');
+  };
+
+  const handleAIGenerate = async () => {
+    if (!aiPrompt.trim()) return;
+    setGenerating(true);
+    try {
+      const res = await fetch('/api/ai/template', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          prompt: aiPrompt,
+          tone: aiTone,
+          category: form.category,
+        }),
+      });
+
+      const data = await res.json();
+      if (res.ok) {
+        setForm({
+          name: data.name || form.name,
+          subject: data.subject || form.subject,
+          body: data.body || form.body,
+          category: form.category,
+        });
+        toast({ title: 'Template Generated', description: 'AI has populated the template fields below.' });
+      } else {
+        toast({ title: 'AI Error', description: data.error || 'Failed to generate template.', variant: 'destructive' });
+      }
+    } catch {
+      toast({ title: 'Error', description: 'Failed to contact AI service.', variant: 'destructive' });
+    } finally {
+      setGenerating(false);
+    }
   };
 
   const openCreate = () => { resetForm(); setDialogOpen(true); };
@@ -172,13 +212,59 @@ The Team`,
                     <Plus className="w-4 h-4 mr-1.5" /> New Template
                   </Button>
                 </DialogTrigger>
-                <DialogContent className="max-w-2xl">
+                <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                   <DialogHeader>
                     <DialogTitle>{editingTemplate ? 'Edit Template' : 'Create Template'}</DialogTitle>
                     <DialogDescription>
                       Use {'{{name}}'}, {'{{email}}'}, {'{{company}}'} as placeholders.
                     </DialogDescription>
                   </DialogHeader>
+
+                  {!editingTemplate && (
+                    <div className="border rounded-xl p-4 bg-violet-500/5 border-violet-500/20 space-y-3 mt-2">
+                      <h4 className="text-xs font-bold text-violet-600 dark:text-violet-400 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 animate-pulse" /> AI Template Generator
+                      </h4>
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <Input
+                            placeholder="Describe what you want the email to say (e.g. invite candidate to interview for developer role)..."
+                            value={aiPrompt}
+                            onChange={(e) => setAiPrompt(e.target.value)}
+                            className="text-xs h-9 flex-1"
+                            disabled={generating}
+                          />
+                          <Select value={aiTone} onValueChange={setAiTone} disabled={generating}>
+                            <SelectTrigger className="w-28 text-xs h-9 capitalize"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="formal">Formal</SelectItem>
+                              <SelectItem value="casual">Casual</SelectItem>
+                              <SelectItem value="friendly">Friendly</SelectItem>
+                              <SelectItem value="sales">Sales</SelectItem>
+                              <SelectItem value="direct">Direct</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <Button
+                            onClick={handleAIGenerate}
+                            disabled={generating || !aiPrompt.trim()}
+                            size="sm"
+                            className="bg-violet-600 hover:bg-violet-500 text-white shrink-0 h-9"
+                          >
+                            {generating ? (
+                              <>
+                                <RefreshCw className="w-3.5 h-3.5 mr-1.5 animate-spin" /> Generating...
+                              </>
+                            ) : (
+                              <>
+                                <Sparkles className="w-3.5 h-3.5 mr-1.5" /> Generate
+                              </>
+                            )}
+                          </Button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="grid gap-4 py-2">
                     <div className="grid grid-cols-2 gap-4">
                       <div className="grid gap-2">
@@ -209,7 +295,7 @@ The Team`,
                         onChange={(e) => setForm({ ...form, body: e.target.value })}
                         placeholder="Dear {{name}},..."
                         rows={10}
-                        className="font-mono text-sm"
+                        className="font-mono text-sm max-h-[350px] overflow-y-auto"
                       />
                     </div>
                   </div>
@@ -275,7 +361,7 @@ The Team`,
 
       {/* Preview Dialog */}
       <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Template Preview</DialogTitle>
             <DialogDescription>Preview how the template looks with sample data.</DialogDescription>

@@ -45,6 +45,29 @@ export async function GET() {
       where: { receivedAt: { gte: sevenDaysAgo } },
     });
 
+    // Generate daily traffic for the last 7 days
+    const chartData = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const nextDay = new Date(d);
+      nextDay.setDate(nextDay.getDate() + 1);
+
+      const sent = await db.sentEmail.count({
+        where: { createdAt: { gte: d, lt: nextDay } },
+      });
+      const received = await db.receivedEmail.count({
+        where: { createdAt: { gte: d, lt: nextDay } },
+      });
+
+      chartData.push({
+        name: d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' }),
+        sent,
+        received,
+      });
+    }
+
     // Template usage stats
     const templateUsage = await db.sentEmail.groupBy({
       by: ['templateId'],
@@ -56,8 +79,8 @@ export async function GET() {
     return NextResponse.json({
       contacts: {
         total: totalContacts,
-        limit: 100,
-        remaining: 100 - totalContacts,
+        limit: 10000,
+        remaining: 10000 - totalContacts,
       },
       templates: {
         total: totalTemplates,
@@ -83,6 +106,7 @@ export async function GET() {
       },
       recentLogs,
       templateUsage,
+      chartData,
     });
   } catch (error) {
     console.error('Failed to fetch overview:', error);

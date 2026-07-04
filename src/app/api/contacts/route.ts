@@ -6,6 +6,17 @@ export async function GET() {
   try {
     const contacts = await db.contact.findMany({
       orderBy: { createdAt: 'desc' },
+      include: {
+        sentEmails: {
+          select: {
+            id: true,
+            subject: true,
+            sentAt: true,
+            status: true,
+          },
+          orderBy: { createdAt: 'desc' },
+        }
+      }
     });
     return NextResponse.json(contacts);
   } catch (error) {
@@ -22,12 +33,6 @@ export async function POST(request: NextRequest) {
 
     if (!name || !email) {
       return NextResponse.json({ error: 'Name and email are required' }, { status: 400 });
-    }
-
-    // Check contact limit (100)
-    const count = await db.contact.count();
-    if (count >= 100) {
-      return NextResponse.json({ error: 'Maximum 100 contacts allowed' }, { status: 400 });
     }
 
     const contact = await db.contact.create({

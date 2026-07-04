@@ -14,6 +14,9 @@ model Contact {
   company   String?
   phone     String?
   customFields String? // JSON string for additional fields like position, location etc.
+  tags      String? // JSON or comma-separated tags
+  groupName String? // contact group
+  isFavorite Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -45,6 +48,7 @@ model SentEmail {
   status     String   @default("pending") // pending, sent, failed
   error      String?
   sentAt     DateTime?
+  attachments String? // JSON string of attachment filenames/paths
   createdAt  DateTime @default(now())
 
   contact  Contact      @relation(fields: [contactId], references: [id])
@@ -63,6 +67,11 @@ model ReceivedEmail {
   flagReason  String?
   autoReplied Boolean  @default(false)
   replyRuleId String?
+  category    String?  // interview, recruiter, rejection, offer, spam, newsletter, promotion, other
+  summary     String?  // AI generated summary
+  extractedInfo String? // JSON string with extracted key details
+  aiReplyDraft String? // AI generated reply draft
+  aiReplyStatus String   @default("none") // none, drafted, approved, sent
   receivedAt  DateTime @default(now())
   createdAt   DateTime @default(now())
 

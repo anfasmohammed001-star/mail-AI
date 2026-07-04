@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { processIncomingEmail } from '@/lib/email-processor';
 
 // POST /api/simulate/inbox — simulate receiving emails for demo
 export async function POST() {
@@ -46,7 +47,18 @@ export async function POST() {
           body: sampleBodies[i % sampleBodies.length],
         },
       });
-      receivedEmails.push(email);
+
+      // Run AI and Response rules automatically on simulated inbox sync
+      try {
+        await processIncomingEmail(email.id);
+      } catch (err) {
+        console.error('Failed to run email automation worker on simulation:', err);
+      }
+
+      const updatedEmail = await db.receivedEmail.findUnique({
+        where: { id: email.id },
+      });
+      receivedEmails.push(updatedEmail || email);
     }
 
     await db.activityLog.create({

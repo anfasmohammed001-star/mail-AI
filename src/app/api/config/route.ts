@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { db } from '@/lib/db';
+import { encrypt } from '@/lib/crypto';
 
-// Keys that contain secrets — never return their values
-const SECRET_KEYS = ['smtp_password'];
+// Keys that contain secrets — never return their values in cleartext
+const SECRET_KEYS = ['smtp_password', 'imap_password', 'ai_api_key'];
 
 // GET /api/config — returns all config, masks secrets
 export async function GET() {
@@ -38,10 +39,16 @@ export async function POST(request: NextRequest) {
       // If the value is the masked placeholder, skip updating (user didn't change it)
       if (SECRET_KEYS.includes(key) && value === '********') continue;
 
+      // Encrypt secret values before storing in DB
+      let finalValue = value;
+      if (SECRET_KEYS.includes(key) && value) {
+        finalValue = encrypt(value);
+      }
+
       await db.emailConfig.upsert({
         where: { key },
-        update: { value, updatedAt: new Date() },
-        create: { key, value },
+        update: { value: finalValue, updatedAt: new Date() },
+        create: { key, value: finalValue },
       });
     }
 

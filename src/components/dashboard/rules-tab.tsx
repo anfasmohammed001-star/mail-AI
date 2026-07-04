@@ -278,7 +278,7 @@ The Team`,
                         onChange={(e) => setForm({ ...form, replyTemplate: e.target.value })}
                         placeholder={`Dear {{name}},\n\nThank you for your email...\n\nBest regards`}
                         rows={6}
-                        className="font-mono text-sm"
+                        className="font-mono text-sm max-h-[250px] overflow-y-auto"
                       />
                     </div>
                   </div>

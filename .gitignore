@@ -52,3 +52,13 @@ prompt
 server.log
 # Skills directory
 /skills/
+
+# Database files
+prisma/db/
+db/backups/
+
+# Workspace archives
+*.tar
+
+# Personal files
+Mohammed_Anfas_Resume_IT.pdf

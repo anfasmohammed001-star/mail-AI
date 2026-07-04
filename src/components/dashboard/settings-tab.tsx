@@ -9,7 +9,27 @@ import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
-import { Settings, Save, TestTube2, CheckCircle2, XCircle, Loader2, AlertTriangle, Info, Mail, Globe, Lock, Eye, EyeOff } from 'lucide-react';
+import {
+  Settings,
+  Save,
+  TestTube2,
+  CheckCircle2,
+  XCircle,
+  Loader2,
+  AlertTriangle,
+  Info,
+  Mail,
+  Globe,
+  Lock,
+  Eye,
+  EyeOff,
+  Cpu,
+  RefreshCw,
+  FolderSync,
+  Database,
+  ArrowDownToLine,
+  ArrowUpFromLine
+} from 'lucide-react';
 
 interface ConfigData {
   smtp_host: string;
@@ -18,6 +38,17 @@ interface ConfigData {
   smtp_password: string;
   smtp_from_name: string;
   smtp_secure: string;
+  imap_host: string;
+  imap_port: string;
+  imap_email: string;
+  imap_password: string;
+  imap_secure: string;
+  ai_enabled: string;
+  ai_provider: string;
+  ai_endpoint: string;
+  ai_model: string;
+  ai_api_key: string;
+  auto_reply_enabled: string;
 }
 
 const DEFAULT_CONFIG: ConfigData = {
@@ -27,29 +58,64 @@ const DEFAULT_CONFIG: ConfigData = {
   smtp_password: '',
   smtp_from_name: '',
   smtp_secure: 'false',
+  imap_host: '',
+  imap_port: '993',
+  imap_email: '',
+  imap_password: '',
+  imap_secure: 'true',
+  ai_enabled: 'false',
+  ai_provider: 'ollama',
+  ai_endpoint: 'http://localhost:11434',
+  ai_model: 'llama3',
+  ai_api_key: '',
+  auto_reply_enabled: 'false',
 };
 
-const PRESETS: { name: string; host: string; port: number; secure: boolean; note: string }[] = [
-  { name: 'Gmail', host: 'smtp.gmail.com', port: 587, secure: false, note: 'Use App Password, not your regular password' },
-  { name: 'Outlook / Office 365', host: 'smtp.office365.com', port: 587, secure: false, note: 'StartTLS required' },
-  { name: 'Yahoo Mail', host: 'smtp.mail.yahoo.com', port: 587, secure: false, note: 'Use App Password' },
-  { name: 'SendGrid', host: 'smtp.sendgrid.net', port: 587, secure: false, note: 'Use your SendGrid API key as password' },
-  { name: 'Amazon SES', host: 'email-smtp.us-east-1.amazonaws.com', port: 587, secure: false, note: 'Requires SES SMTP credentials' },
+const SMTP_PRESETS = [
+  { name: 'Gmail', host: 'smtp.gmail.com', port: 587, secure: false },
+  { name: 'Outlook', host: 'smtp.office365.com', port: 587, secure: false },
+  { name: 'Yahoo', host: 'smtp.mail.yahoo.com', port: 587, secure: false },
+];
+
+const IMAP_PRESETS = [
+  { name: 'Gmail', host: 'imap.gmail.com', port: 993, secure: true },
+  { name: 'Outlook', host: 'outlook.office365.com', port: 993, secure: true },
+  { name: 'Yahoo', host: 'imap.mail.yahoo.com', port: 993, secure: true },
+];
+
+const AI_PRESETS = [
+  { name: 'Ollama', provider: 'ollama', endpoint: 'http://localhost:11434', model: 'llama3' },
+  { name: 'LM Studio', provider: 'lm_studio', endpoint: 'http://localhost:1234', model: 'meta-llama-3-8b-instruct' },
+  { name: 'OpenAI', provider: 'openai', endpoint: 'https://api.openai.com', model: 'gpt-4o-mini' },
+  { name: 'Gemini', provider: 'gemini', endpoint: 'https://generativelanguage.googleapis.com', model: 'gemini-1.5-flash' },
+  { name: 'NVIDIA NIM', provider: 'nvidia_nim', endpoint: 'https://integrate.api.nvidia.com', model: 'z-ai/glm-5.2' },
 ];
 
 export function SettingsTab() {
   const [config, setConfig] = useState<ConfigData>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
+  
+  // States
   const [saving, setSaving] = useState(false);
-  const [testing, setTesting] = useState(false);
-  const [testResult, setTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+  const [testingSmtp, setTestingSmtp] = useState(false);
+  const [testSmtpResult, setTestSmtpResult] = useState<{ success: boolean; message: string } | null>(null);
+  
+  // Startup config
+  const [startupEnabled, setStartupEnabled] = useState(false);
+  const [startupSupported, setStartupSupported] = useState(false);
+
+  // Masks
+  const [showSmtpPassword, setShowSmtpPassword] = useState(false);
+  const [showImapPassword, setShowImapPassword] = useState(false);
+  const [showAiKey, setShowAiKey] = useState(false);
+
   const { toast } = useToast();
 
   const fetchConfig = useCallback(async () => {
     try {
       const res = await fetch('/api/config');
       const data = await res.json();
+      
       setConfig({
         smtp_host: data.smtp_host || '',
         smtp_port: data.smtp_port || '587',
@@ -57,7 +123,24 @@ export function SettingsTab() {
         smtp_password: data.smtp_password || '',
         smtp_from_name: data.smtp_from_name || '',
         smtp_secure: data.smtp_secure || 'false',
+        imap_host: data.imap_host || '',
+        imap_port: data.imap_port || '993',
+        imap_email: data.imap_email || '',
+        imap_password: data.imap_password || '',
+        imap_secure: data.imap_secure || 'true',
+        ai_enabled: data.ai_enabled || 'false',
+        ai_provider: data.ai_provider || 'ollama',
+        ai_endpoint: data.ai_endpoint || 'http://localhost:11434',
+        ai_model: data.ai_model || 'llama3',
+        ai_api_key: data.ai_api_key || '',
+        auto_reply_enabled: data.auto_reply_enabled || 'false',
       });
+
+      // Fetch Startup Settings
+      const startupRes = await fetch('/api/config/startup');
+      const startupData = await startupRes.json();
+      setStartupEnabled(startupData.enabled);
+      setStartupSupported(startupData.supported);
     } catch {
       // stay on defaults
     } finally {
@@ -65,16 +148,13 @@ export function SettingsTab() {
     }
   }, []);
 
-  useEffect(() => { fetchConfig(); }, [fetchConfig]);
+  useEffect(() => {
+    fetchConfig();
+  }, [fetchConfig]);
 
   const handleSave = async () => {
-    if (!config.smtp_host.trim() || !config.smtp_email.trim()) {
-      toast({ title: 'Required Fields Missing', description: 'SMTP Host and Email are required.', variant: 'destructive' });
-      return;
-    }
-
     setSaving(true);
-    setTestResult(null);
+    setTestSmtpResult(null);
 
     try {
       const res = await fetch('/api/config', {
@@ -84,314 +164,514 @@ export function SettingsTab() {
       });
 
       if (res.ok) {
-        toast({ title: 'Settings Saved', description: 'SMTP configuration has been saved.' });
+        toast({ title: 'Configuration Saved', description: 'Local settings updated successfully.' });
       } else {
         const err = await res.json();
-        toast({ title: 'Error', description: err.error || 'Failed to save.', variant: 'destructive' });
+        toast({ title: 'Error', description: err.error || 'Failed to save configuration.', variant: 'destructive' });
       }
     } catch {
-      toast({ title: 'Error', description: 'Failed to save settings.', variant: 'destructive' });
+      toast({ title: 'Error', description: 'Failed to save configuration.', variant: 'destructive' });
     } finally {
       setSaving(false);
     }
   };
 
-  const handleTest = async () => {
-    // Save first, then test
+  const handleTestSmtp = async () => {
     if (!config.smtp_host.trim() || !config.smtp_email.trim() || !config.smtp_password.trim()) {
-      toast({
-        title: 'Cannot Test',
-        description: 'Fill in SMTP Host, Email, and Password first.',
-        variant: 'destructive',
-      });
+      toast({ title: 'Validation Warning', description: 'Enter SMTP server, email, and password to test.', variant: 'destructive' });
       return;
     }
 
-    // Save before testing
+    // Save first
     await fetch('/api/config', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ configs: config }),
     });
 
-    setTesting(true);
-    setTestResult(null);
+    setTestingSmtp(true);
+    setTestSmtpResult(null);
 
     try {
       const res = await fetch('/api/config/test', { method: 'POST' });
       const data = await res.json();
-      setTestResult({ success: data.success, message: data.message || data.error || 'Unknown result' });
+      setTestSmtpResult({ success: data.success, message: data.message || data.error || 'Test connection completed' });
     } catch {
-      setTestResult({ success: false, message: 'Failed to reach test endpoint.' });
+      setTestSmtpResult({ success: false, message: 'Could not connect to localhost test API.' });
     } finally {
-      setTesting(false);
+      setTestingSmtp(false);
     }
   };
 
-  const applyPreset = (preset: typeof PRESETS[0]) => {
+  const handleToggleStartup = async (checked: boolean) => {
+    try {
+      const res = await fetch('/api/config/startup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ enable: checked }),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setStartupEnabled(data.enabled);
+        toast({
+          title: data.enabled ? 'Startup Enabled' : 'Startup Disabled',
+          description: data.enabled
+            ? 'MailAgent AI will now launch automatically when Windows starts.'
+            : 'Removed from Windows Startup folder.',
+        });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      toast({ title: 'Startup Config Error', description: err.message || 'Failed to toggle startup task.', variant: 'destructive' });
+    }
+  };
+
+  const triggerDbSnapshot = async () => {
+    try {
+      const res = await fetch('/api/backup?action=snapshot');
+      const data = await res.json();
+      if (res.ok) {
+        toast({ title: 'Snapshot Backup Created', description: `Saved snapshot file: ${data.file}` });
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (err: any) {
+      toast({ title: 'Backup Failure', description: err.message || 'Failed to copy SQLite database snapshot.', variant: 'destructive' });
+    }
+  };
+
+  const exportBackupJson = async () => {
+    try {
+      const res = await fetch('/api/backup');
+      const data = await res.json();
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `mailagent_backup_${new Date().toISOString().slice(0,10)}.json`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast({ title: 'Export Success', description: 'JSON backup downloaded.' });
+    } catch {
+      toast({ title: 'Export Failed', description: 'Unable to compile config JSON.', variant: 'destructive' });
+    }
+  };
+
+  const importBackupJson = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      try {
+        const payload = JSON.parse(event.target?.result as string);
+        const res = await fetch('/api/backup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+          toast({ title: 'Restore Complete', description: `Restored: ${data.restoredContacts} contacts, ${data.restoredTemplates} templates, ${data.restoredRules} rules.` });
+          fetchConfig();
+        } else {
+          throw new Error(data.error);
+        }
+      } catch (err: any) {
+        toast({ title: 'Restore Failed', description: err.message || 'Error processing backup file.', variant: 'destructive' });
+      }
+    };
+    reader.readAsText(file);
+  };
+
+  const applySmtpPreset = (preset: typeof SMTP_PRESETS[0]) => {
     setConfig((prev) => ({
       ...prev,
       smtp_host: preset.host,
       smtp_port: String(preset.port),
       smtp_secure: String(preset.secure),
     }));
-    setTestResult(null);
-    toast({ title: 'Preset Applied', description: `${preset.name} SMTP settings loaded. Fill in your email & password.` });
+    toast({ title: 'SMTP Preset Loaded', description: `${preset.name} SMTP settings applied.` });
   };
 
-  const isConfigured = config.smtp_host.trim() !== '' && config.smtp_email.trim() !== '' && config.smtp_password.trim() !== '';
+  const applyImapPreset = (preset: typeof IMAP_PRESETS[0]) => {
+    setConfig((prev) => ({
+      ...prev,
+      imap_host: preset.host,
+      imap_port: String(preset.port),
+      imap_secure: String(preset.secure),
+    }));
+    toast({ title: 'IMAP Preset Loaded', description: `${preset.name} IMAP settings applied.` });
+  };
+
+  const applyAiPreset = (preset: typeof AI_PRESETS[0]) => {
+    setConfig((prev) => ({
+      ...prev,
+      ai_provider: preset.provider,
+      ai_endpoint: preset.endpoint,
+      ai_model: preset.model,
+    }));
+    toast({ title: 'AI Preset Loaded', description: `${preset.name} configuration loaded.` });
+  };
 
   if (loading) {
     return (
       <div className="space-y-4">
-        <Card><CardContent className="p-6"><div className="h-60 bg-muted rounded" /></CardContent></Card>
+        <Card><CardContent className="p-6"><div className="h-60 bg-muted rounded animate-pulse" /></CardContent></Card>
       </div>
     );
   }
 
   return (
-    <div className="grid gap-4 lg:grid-cols-3">
-      {/* SMTP Configuration */}
-      <div className="lg:col-span-2 space-y-4">
+    <div className="grid gap-6 lg:grid-cols-3">
+      {/* Settings inputs */}
+      <div className="lg:col-span-2 space-y-6">
+        {/* SMTP Config */}
         <Card>
-          <CardHeader className="pb-3">
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Mail className="w-4 h-4" />
-                  SMTP Configuration
-                </CardTitle>
-                <CardDescription>Configure your email server to send real emails</CardDescription>
-              </div>
-              {isConfigured ? (
-                <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200">
-                  <CheckCircle2 className="w-3 h-3 mr-1" /> Configured
-                </Badge>
-              ) : (
-                <Badge variant="destructive">
-                  <XCircle className="w-3 h-3 mr-1" /> Not Configured
-                </Badge>
-              )}
-            </div>
+          <CardHeader className="pb-3 border-b bg-muted/10">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+              <Mail className="w-4 h-4" /> SMTP Send Settings
+            </CardTitle>
+            <CardDescription className="text-xs">Configure outgoing email delivery servers</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-5">
-            {/* Quick Presets */}
-            <div>
-              <Label className="text-sm font-medium mb-2 block">Quick Presets</Label>
-              <div className="flex flex-wrap gap-2">
-                {PRESETS.map((preset) => (
-                  <Button
-                    key={preset.name}
-                    variant="outline"
-                    size="sm"
-                    onClick={() => applyPreset(preset)}
-                  >
-                    <Globe className="w-3.5 h-3.5 mr-1.5" />
-                    {preset.name}
-                  </Button>
-                ))}
-              </div>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-xs text-muted-foreground font-bold mr-1 uppercase">Presets:</span>
+              {SMTP_PRESETS.map((p) => (
+                <Button key={p.name} variant="outline" size="sm" onClick={() => applySmtpPreset(p)} className="text-xs h-7 px-2">
+                  {p.name}
+                </Button>
+              ))}
             </div>
 
             <Separator />
 
-            {/* Form Fields */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="grid gap-2">
-                <Label htmlFor="smtp_host">SMTP Host *</Label>
-                <Input
-                  id="smtp_host"
-                  placeholder="smtp.gmail.com"
-                  value={config.smtp_host}
-                  onChange={(e) => { setConfig({ ...config, smtp_host: e.target.value }); setTestResult(null); }}
-                />
+                <Label htmlFor="smtp_host" className="text-xs font-semibold">SMTP Host *</Label>
+                <Input id="smtp_host" placeholder="smtp.gmail.com" value={config.smtp_host} onChange={(e) => setConfig({ ...config, smtp_host: e.target.value })} className="text-xs" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="smtp_port">Port</Label>
-                <Input
-                  id="smtp_port"
-                  type="number"
-                  placeholder="587"
-                  value={config.smtp_port}
-                  onChange={(e) => { setConfig({ ...config, smtp_port: e.target.value }); setTestResult(null); }}
-                />
+                <Label htmlFor="smtp_port" className="text-xs font-semibold">SMTP Port *</Label>
+                <Input id="smtp_port" type="number" placeholder="587" value={config.smtp_port} onChange={(e) => setConfig({ ...config, smtp_port: e.target.value })} className="text-xs" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="smtp_email">Your Email *</Label>
-                <Input
-                  id="smtp_email"
-                  type="email"
-                  placeholder="you@gmail.com"
-                  value={config.smtp_email}
-                  onChange={(e) => { setConfig({ ...config, smtp_email: e.target.value }); setTestResult(null); }}
-                />
+                <Label htmlFor="smtp_email" className="text-xs font-semibold">Sender Email *</Label>
+                <Input id="smtp_email" type="email" placeholder="you@gmail.com" value={config.smtp_email} onChange={(e) => setConfig({ ...config, smtp_email: e.target.value })} className="text-xs" />
               </div>
               <div className="grid gap-2">
-                <Label htmlFor="smtp_password">Password / App Password *</Label>
+                <Label htmlFor="smtp_password" className="text-xs font-semibold">Sender Password / App Password *</Label>
                 <div className="relative">
                   <Input
                     id="smtp_password"
-                    type={showPassword ? 'text' : 'password'}
+                    type={showSmtpPassword ? 'text' : 'password'}
                     placeholder="••••••••"
                     value={config.smtp_password}
-                    onChange={(e) => { setConfig({ ...config, smtp_password: e.target.value }); setTestResult(null); }}
-                    className="pr-10"
+                    onChange={(e) => setConfig({ ...config, smtp_password: e.target.value })}
+                    className="text-xs pr-9 h-9"
                   />
                   <Button
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="absolute right-0 top-0 h-full px-3"
-                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowSmtpPassword(!showSmtpPassword)}
                   >
-                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    {showSmtpPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                   </Button>
                 </div>
               </div>
               <div className="sm:col-span-2 grid gap-2">
-                <Label htmlFor="smtp_from_name">From Name (optional)</Label>
-                <Input
-                  id="smtp_from_name"
-                  placeholder="My Company"
-                  value={config.smtp_from_name}
-                  onChange={(e) => { setConfig({ ...config, smtp_from_name: e.target.value }); setTestResult(null); }}
-                />
+                <Label htmlFor="smtp_from_name" className="text-xs font-semibold">Display Sender Name</Label>
+                <Input id="smtp_from_name" placeholder="John Doe" value={config.smtp_from_name} onChange={(e) => setConfig({ ...config, smtp_from_name: e.target.value })} className="text-xs" />
               </div>
               <div className="sm:col-span-2 flex items-center gap-3">
                 <Switch
                   id="smtp_secure"
                   checked={config.smtp_secure === 'true'}
-                  onCheckedChange={(checked) => {
-                    setConfig({ ...config, smtp_secure: String(checked) });
-                    setTestResult(null);
-                  }}
+                  onCheckedChange={(checked) => setConfig({ ...config, smtp_secure: String(checked) })}
                 />
                 <div>
-                  <Label htmlFor="smtp_secure" className="cursor-pointer">Use SSL/TLS (Port 465)</Label>
-                  <p className="text-xs text-muted-foreground">Enable for port 465. For port 587, keep this off (uses STARTTLS).</p>
+                  <Label htmlFor="smtp_secure" className="cursor-pointer text-xs font-semibold">Use SSL/TLS (Port 465)</Label>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Recommended for 465; keep disabled for 587/STARTTLS.</p>
                 </div>
               </div>
             </div>
 
-            {/* Test Result */}
-            {testResult && (
-              <div className={`flex items-start gap-3 p-3 rounded-lg border ${
-                testResult.success
-                  ? 'bg-emerald-50 border-emerald-200'
-                  : 'bg-red-50 border-red-200'
+            {testSmtpResult && (
+              <div className={`flex items-start gap-3 p-3.5 rounded-lg border text-xs ${
+                testSmtpResult.success ? 'bg-emerald-50 border-emerald-200/50 text-emerald-800' : 'bg-red-50 border-red-200/50 text-red-800'
               }`}>
-                {testResult.success
-                  ? <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
-                  : <XCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
-                }
+                {testSmtpResult.success ? <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5" /> : <XCircle className="w-4 h-4 shrink-0 mt-0.5" />}
                 <div>
-                  <p className={`text-sm font-medium ${testResult.success ? 'text-emerald-800' : 'text-red-800'}`}>
-                    {testResult.success ? 'Connection Successful' : 'Connection Failed'}
-                  </p>
-                  <p className={`text-xs mt-0.5 ${testResult.success ? 'text-emerald-700' : 'text-red-700'}`}>
-                    {testResult.message}
-                  </p>
+                  <p className="font-bold">{testSmtpResult.success ? 'Success' : 'Failure'}</p>
+                  <p className="mt-0.5">{testSmtpResult.message}</p>
                 </div>
               </div>
             )}
 
-            {/* Actions */}
-            <div className="flex items-center gap-3 pt-2">
-              <Button onClick={handleSave} disabled={saving}>
-                {saving ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <Save className="w-4 h-4 mr-1.5" />}
-                Save Settings
+            <div className="flex gap-2">
+              <Button onClick={handleSave} disabled={saving} size="sm">
+                <Save className="w-3.5 h-3.5 mr-1.5" /> Save Outgoing
               </Button>
-              <Button variant="outline" onClick={handleTest} disabled={testing}>
-                {testing ? <Loader2 className="w-4 h-4 mr-1.5 animate-spin" /> : <TestTube2 className="w-4 h-4 mr-1.5" />}
-                Test Connection
+              <Button variant="outline" onClick={handleTestSmtp} disabled={testingSmtp} size="sm">
+                {testingSmtp ? <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" /> : <TestTube2 className="w-3.5 h-3.5 mr-1.5" />}
+                Test SMTP Outgoing
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        {/* IMAP Config */}
+        <Card>
+          <CardHeader className="pb-3 border-b bg-muted/10">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" /> IMAP Receive Settings
+            </CardTitle>
+            <CardDescription className="text-xs">Configure incoming email servers to monitor real-time inbox events</CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex flex-wrap gap-1.5 items-center">
+              <span className="text-xs text-muted-foreground font-bold mr-1 uppercase">Presets:</span>
+              {IMAP_PRESETS.map((p) => (
+                <Button key={p.name} variant="outline" size="sm" onClick={() => applyImapPreset(p)} className="text-xs h-7 px-2">
+                  {p.name}
+                </Button>
+              ))}
+            </div>
+
+            <Separator />
+
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="grid gap-2">
+                <Label htmlFor="imap_host" className="text-xs font-semibold">IMAP Host *</Label>
+                <Input id="imap_host" placeholder="imap.gmail.com" value={config.imap_host} onChange={(e) => setConfig({ ...config, imap_host: e.target.value })} className="text-xs" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="imap_port" className="text-xs font-semibold">IMAP Port *</Label>
+                <Input id="imap_port" type="number" placeholder="993" value={config.imap_port} onChange={(e) => setConfig({ ...config, imap_port: e.target.value })} className="text-xs" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="imap_email" className="text-xs font-semibold">IMAP Email *</Label>
+                <Input id="imap_email" type="email" placeholder="you@gmail.com" value={config.imap_email} onChange={(e) => setConfig({ ...config, imap_email: e.target.value })} className="text-xs" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="imap_password" className="text-xs font-semibold">IMAP Password / App Password *</Label>
+                <div className="relative">
+                  <Input
+                    id="imap_password"
+                    type={showImapPassword ? 'text' : 'password'}
+                    placeholder="••••••••"
+                    value={config.imap_password}
+                    onChange={(e) => setConfig({ ...config, imap_password: e.target.value })}
+                    className="text-xs pr-9 h-9"
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+                    onClick={() => setShowImapPassword(!showImapPassword)}
+                  >
+                    {showImapPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </Button>
+                </div>
+              </div>
+              <div className="sm:col-span-2 flex items-center gap-3">
+                <Switch
+                  id="imap_secure"
+                  checked={config.imap_secure === 'true'}
+                  onCheckedChange={(checked) => setConfig({ ...config, imap_secure: String(checked) })}
+                />
+                <div>
+                  <Label htmlFor="imap_secure" className="cursor-pointer text-xs font-semibold">Use SSL/TLS (Default active)</Label>
+                  <p className="text-[10px] text-muted-foreground mt-0.5">Encrypts the incoming IMAP connection.</p>
+                </div>
+              </div>
+            </div>
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              <Save className="w-3.5 h-3.5 mr-1.5" /> Save Incoming
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Local & Cloud AI Configuration */}
+        <Card>
+          <CardHeader className="pb-3 border-b bg-muted/10">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+              <Cpu className="w-4 h-4" /> AI Engine Configuration
+            </CardTitle>
+            <CardDescription className="text-xs">Connect to local LLMs (Ollama / LM Studio) or cloud LLM endpoints</CardDescription>
+          </CardHeader>
+          <CardContent className="p-5 space-y-4">
+            <div className="flex items-center gap-3">
+              <Switch
+                id="ai_enabled"
+                checked={config.ai_enabled === 'true'}
+                onCheckedChange={(checked) => setConfig({ ...config, ai_enabled: String(checked) })}
+              />
+              <div>
+                <Label htmlFor="ai_enabled" className="cursor-pointer text-xs font-bold uppercase">Enable AI Integration</Label>
+                <p className="text-[10px] text-muted-foreground mt-0.5">Enables AI writing assistants and incoming email classification.</p>
+              </div>
+            </div>
+
+            {config.ai_enabled === 'true' && (
+              <>
+                <div className="flex flex-wrap gap-1.5 items-center">
+                  <span className="text-xs text-muted-foreground font-bold mr-1 uppercase">Presets:</span>
+                  {AI_PRESETS.map((p) => (
+                    <Button key={p.name} variant="outline" size="sm" onClick={() => applyAiPreset(p)} className="text-xs h-7 px-2">
+                      {p.name}
+                    </Button>
+                  ))}
+                </div>
+
+                <Separator />
+
+                <div className="grid gap-4 sm:grid-cols-2">
+                  <div className="grid gap-2">
+                    <Label htmlFor="ai_provider" className="text-xs font-semibold">AI Provider *</Label>
+                    <select
+                      id="ai_provider"
+                      value={config.ai_provider}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        const p = AI_PRESETS.find(x => x.provider === val);
+                        setConfig({
+                          ...config,
+                          ai_provider: val,
+                          ai_endpoint: p?.endpoint || '',
+                          ai_model: p?.model || '',
+                        });
+                      }}
+                      className="bg-background border rounded-md p-1.5 text-xs outline-none cursor-pointer h-9 font-medium"
+                    >
+                      <option value="ollama">Ollama (Local)</option>
+                      <option value="lm_studio">LM Studio (Local)</option>
+                      <option value="openai">OpenAI (Cloud)</option>
+                      <option value="gemini">Gemini (Cloud)</option>
+                      <option value="nvidia_nim">NVIDIA NIM (Local/Cloud)</option>
+                    </select>
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="ai_model" className="text-xs font-semibold">Model Name *</Label>
+                    <Input id="ai_model" placeholder="llama3" value={config.ai_model} onChange={(e) => setConfig({ ...config, ai_model: e.target.value })} className="text-xs" />
+                  </div>
+                  <div className="sm:col-span-2 grid gap-2">
+                    <Label htmlFor="ai_endpoint" className="text-xs font-semibold">API Endpoint Endpoint URL *</Label>
+                    <Input id="ai_endpoint" placeholder="http://localhost:11434" value={config.ai_endpoint} onChange={(e) => setConfig({ ...config, ai_endpoint: e.target.value })} className="text-xs" />
+                  </div>
+                  <div className="sm:col-span-2 grid gap-2">
+                    <Label htmlFor="ai_api_key" className="text-xs font-semibold">API Secret Key (Not required for local models)</Label>
+                    <div className="relative">
+                      <Input
+                        id="ai_api_key"
+                        type={showAiKey ? 'text' : 'password'}
+                        placeholder="••••••••"
+                        value={config.ai_api_key}
+                        onChange={(e) => setConfig({ ...config, ai_api_key: e.target.value })}
+                        className="text-xs pr-9 h-9"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute right-0 top-0 h-full px-3 text-muted-foreground hover:text-foreground"
+                        onClick={() => setShowAiKey(!showAiKey)}
+                      >
+                        {showAiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+            <Button onClick={handleSave} disabled={saving} size="sm">
+              <Save className="w-3.5 h-3.5 mr-1.5" /> Save Engine Settings
+            </Button>
           </CardContent>
         </Card>
       </div>
 
-      {/* Help Panel */}
-      <div className="space-y-4">
+      {/* Side tools (Startup, Backups, Presets details) */}
+      <div className="space-y-6">
+        {/* Startup Integrator */}
         <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Info className="w-4 h-4" />
-              How to Set Up
+          <CardHeader className="pb-3 bg-muted/10">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+              <FolderSync className="w-4 h-4" /> Desktop Integrator
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label className="text-xs font-bold uppercase">Launch on Startup</Label>
+                <p className="text-[10px] text-muted-foreground">Start dashboard server when laptop boots</p>
+              </div>
+              <Switch
+                checked={startupEnabled}
+                onCheckedChange={handleToggleStartup}
+                disabled={!startupSupported}
+              />
+            </div>
+            {!startupSupported && (
+              <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200/50 text-[10px] text-amber-800 dark:text-amber-300">
+                <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
+                <p>Startup configuration is currently supported natively on Windows systems.</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* SQLite Database Snapshot & Recovery */}
+        <Card>
+          <CardHeader className="pb-3 bg-muted/10">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+              <Database className="w-4 h-4" /> Snapshot & Backups
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-4 space-y-4 text-xs">
             <div className="space-y-3">
-              <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">1</div>
-                <div>
-                  <p className="text-sm font-medium">Choose your provider</p>
-                  <p className="text-xs text-muted-foreground">Click a preset button above to auto-fill host & port.</p>
-                </div>
+              <div>
+                <Label className="font-bold text-[11px] uppercase text-muted-foreground block mb-1">SQLite snapshot</Label>
+                <Button variant="outline" size="sm" onClick={triggerDbSnapshot} className="w-full justify-start text-xs h-8">
+                  <Database className="w-3.5 h-3.5 mr-2 text-blue-500" /> Create Database Snapshot
+                </Button>
+                <p className="text-[10px] text-muted-foreground mt-1">Saves a backup copy of the active database file.</p>
               </div>
-              <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">2</div>
-                <div>
-                  <p className="text-sm font-medium">Enter your email & password</p>
-                  <p className="text-xs text-muted-foreground">For Gmail, you need an <strong>App Password</strong> (not your regular password).</p>
+
+              <Separator />
+
+              <div>
+                <Label className="font-bold text-[11px] uppercase text-muted-foreground block mb-2">Import / Export configs</Label>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={exportBackupJson} className="flex-1 text-xs h-8">
+                    <ArrowDownToLine className="w-3.5 h-3.5 mr-1.5" /> Export Data
+                  </Button>
+                  <label htmlFor="restore-file" className="flex-1 cursor-pointer">
+                    <div className="flex items-center justify-center border rounded-lg h-8 bg-muted/30 hover:bg-muted/60 text-xs font-medium transition-colors">
+                      <ArrowUpFromLine className="w-3.5 h-3.5 mr-1.5" /> Restore Data
+                    </div>
+                  </label>
+                  <input
+                    id="restore-file"
+                    type="file"
+                    accept=".json"
+                    onChange={importBackupJson}
+                    className="hidden"
+                  />
                 </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">3</div>
-                <div>
-                  <p className="text-sm font-medium">Test the connection</p>
-                  <p className="text-xs text-muted-foreground">Click &quot;Test Connection&quot; to verify SMTP works before sending.</p>
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="w-6 h-6 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold shrink-0">4</div>
-                <div>
-                  <p className="text-sm font-medium">Save & start sending</p>
-                  <p className="text-xs text-muted-foreground">Save settings, then go to Compose to send real emails.</p>
-                </div>
+                <p className="text-[10px] text-muted-foreground mt-1.5">Export or restore templates, rules, and contacts as JSON.</p>
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Lock className="w-4 h-4" />
-              Gmail App Password
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3 text-xs text-muted-foreground">
-            <p>Gmail requires an <strong>App Password</strong> instead of your regular password:</p>
-            <ol className="list-decimal list-inside space-y-1.5 ml-1">
-              <li>Go to your Google Account → Security</li>
-              <li>Enable 2-Step Verification</li>
-              <li>Go to App Passwords</li>
-              <li>Create a new app password (select &quot;Mail&quot;)</li>
-              <li>Copy the 16-character password</li>
-              <li>Paste it in the Password field above</li>
-            </ol>
-            <div className="flex items-start gap-2 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
-              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-              <p className="text-amber-800">Your password is stored locally in the database. It never leaves your machine.</p>
-            </div>
-          </CardContent>
-        </Card>
-
-        {!isConfigured && (
-          <Card className="border-amber-200 bg-amber-50/50">
-            <CardContent className="p-4">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
-                <div>
-                  <p className="text-sm font-medium text-amber-900">SMTP Not Configured</p>
-                  <p className="text-xs text-amber-800 mt-1">
-                    Emails won&apos;t be delivered until you configure SMTP settings. Fill in the form and test the connection.
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        )}
       </div>
     </div>
   );

@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { db } from '@/lib/db';
+import { decrypt } from '@/lib/crypto';
 
 // ---------- SMTP helper ----------
+
+interface Attachment {
+  filename: string;
+  content: string; // Base64
+}
 
 interface SmtpConfig {
   host: string;
@@ -24,7 +30,7 @@ async function getSmtpConfig(): Promise<SmtpConfig | null> {
     host: map.smtp_host,
     port: parseInt(map.smtp_port || '587', 10),
     email: map.smtp_email,
-    password: map.smtp_password,
+    password: decrypt(map.smtp_password),
     fromName: map.smtp_from_name || map.smtp_email,
     secure: map.smtp_secure === 'true',
   };
@@ -47,7 +53,8 @@ async function sendRealEmail(
   toEmail: string,
   toName: string,
   subject: string,
-  htmlBody: string
+  htmlBody: string,
+  attachments?: Attachment[]
 ): Promise<{ success: boolean; error?: string; messageId?: string }> {
   const transport = await createTransport(config);
   try {
@@ -57,6 +64,10 @@ async function sendRealEmail(
       subject,
       html: htmlBody.replace(/\n/g, '<br />'),
       text: htmlBody,
+      attachments: attachments ? attachments.map(att => ({
+        filename: att.filename,
+        content: Buffer.from(att.content, 'base64')
+      })) : undefined
     });
     transport.close();
     return { success: true, messageId: info.messageId };
@@ -108,10 +119,10 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { mode, contactIds, templateId, subject, body: emailBody } = body;
+    const { mode, contactIds, templateId, subject, body: emailBody, attachments } = body;
 
     if (mode === 'bulk') {
-      return handleBulkSend(contactIds, templateId, subject, emailBody);
+      return handleBulkSend(contactIds, templateId, subject, emailBody, attachments);
     }
 
     return handleSingleSend(body);
@@ -128,8 +139,9 @@ async function handleSingleSend(data: {
   toName?: string;
   subject?: string;
   body?: string;
+  attachments?: Attachment[];
 }) {
-  const { contactId, templateId, toEmail, toName, subject, body: emailBody } = data;
+  const { contactId, templateId, toEmail, toName, subject, body: emailBody, attachments } = data;
 
   let finalToEmail = toEmail || '';
   let finalToName = toName || '';
@@ -163,7 +175,7 @@ async function handleSingleSend(data: {
   let messageId: string | null = null;
 
   if (smtpConfig) {
-    const result = await sendRealEmail(smtpConfig, finalToEmail, finalToName, finalSubject, finalBody);
+    const result = await sendRealEmail(smtpConfig, finalToEmail, finalToName, finalSubject, finalBody, attachments);
     if (!result.success) {
       sendStatus = 'failed';
       sendError = result.error || 'SMTP error';
@@ -187,6 +199,7 @@ async function handleSingleSend(data: {
       status: sendStatus,
       error: sendError,
       sentAt: sendStatus === 'sent' ? new Date() : null,
+      attachments: attachments && attachments.length > 0 ? JSON.stringify(attachments.map(a => a.filename)) : null,
     },
   });
 
@@ -216,7 +229,8 @@ async function handleBulkSend(
   contactIds: string[],
   templateId: string | null,
   subject: string | null,
-  body: string | null
+  body: string | null,
+  attachments?: Attachment[]
 ) {
   if (!contactIds || contactIds.length === 0) {
     return NextResponse.json({ error: 'No contacts selected' }, { status: 400 });
@@ -251,7 +265,7 @@ async function handleBulkSend(
       let sendError: string | null = null;
 
       if (smtpConfig) {
-        const result = await sendRealEmail(smtpConfig, contact.email, contact.name, emailSubject, emailBody);
+        const result = await sendRealEmail(smtpConfig, contact.email, contact.name, emailSubject, emailBody, attachments);
         if (!result.success) {
           sendStatus = 'failed';
           sendError = result.error || 'SMTP error';
@@ -272,6 +286,7 @@ async function handleBulkSend(
           status: sendStatus,
           error: sendError,
           sentAt: sendStatus === 'sent' ? new Date() : null,
+          attachments: attachments && attachments.length > 0 ? JSON.stringify(attachments.map(a => a.filename)) : null,
         },
       });
 

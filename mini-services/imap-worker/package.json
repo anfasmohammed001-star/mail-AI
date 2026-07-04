@@ -1,0 +1,9 @@
+{
+  "name": "imap-worker",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "node index.js",
+    "start": "node index.js"
+  }
+}
