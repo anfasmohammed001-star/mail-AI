@@ -64,7 +64,7 @@ export function InboxTab() {
 
   const fetchEmails = useCallback(() => {
     fetch('/api/emails?type=received')
-      .then((r) => r.json())
+      .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
       .then((d) => {
         setEmails(d);
         setLoading(false);

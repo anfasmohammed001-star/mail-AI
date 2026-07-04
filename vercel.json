@@ -1,0 +1,10 @@
+{
+  "env": {
+    "DATABASE_URL": "file:./db/custom.db"
+  },
+  "build": {
+    "env": {
+      "DATABASE_URL": "file:./db/custom.db"
+    }
+  }
+}

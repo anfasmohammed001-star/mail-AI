@@ -48,7 +48,7 @@ export function RulesTab() {
 
   const fetchRules = useCallback(() => {
     fetch('/api/rules')
-      .then((r) => r.json())
+      .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
       .then((d) => { setRules(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

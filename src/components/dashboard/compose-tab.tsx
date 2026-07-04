@@ -72,9 +72,9 @@ export function ComposeTab() {
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/contacts').then((r) => r.json()),
-      fetch('/api/templates').then((r) => r.json()),
-      fetch('/api/config').then((r) => r.json()),
+      fetch('/api/contacts').then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); }),
+      fetch('/api/templates').then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); }),
+      fetch('/api/config').then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); }),
     ])
       .then(([c, t, cfg]) => {
         setContacts(c);

@@ -189,7 +189,7 @@ export function ContactsTab() {
 
   const fetchContacts = useCallback(() => {
     fetch('/api/contacts')
-      .then((r) => r.json())
+      .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
       .then((d) => {
         setContacts(d);
         setLoading(false);

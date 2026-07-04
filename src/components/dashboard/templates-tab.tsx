@@ -38,7 +38,7 @@ export function TemplatesTab() {
 
   const fetchTemplates = useCallback(() => {
     fetch('/api/templates')
-      .then((r) => r.json())
+      .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
       .then((d) => { setTemplates(d); setLoading(false); })
       .catch(() => setLoading(false));
   }, []);

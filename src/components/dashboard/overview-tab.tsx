@@ -35,7 +35,7 @@ export function OverviewTab({ onNavigate }: OverviewTabProps) {
 
   useEffect(() => {
     fetch('/api/overview')
-      .then((r) => r.json())
+      .then(r => { if (!r.ok) throw new Error('Network error'); return r.json(); })
       .then((d) => {
         setData(d);
         setLoading(false);
