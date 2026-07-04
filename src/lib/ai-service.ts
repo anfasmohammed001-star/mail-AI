@@ -131,12 +131,19 @@ async function callOpenAICompatible(
     headers['Authorization'] = `Bearer ${apiKey}`;
   }
 
+  // Map local model name to NVIDIA Integrate cloud API model name if using the cloud endpoint
+  let finalModel = model;
+  if (cleanEndpoint.includes('integrate.api.nvidia.com') && 
+      (model === 'zai-org/GLM-5.2' || model === 'zai-org/glm-5.2')) {
+    finalModel = 'z-ai/glm-5.2';
+  }
+
   try {
     const res = await fetch(`${cleanEndpoint}/v1/chat/completions`, {
       method: 'POST',
       headers,
       body: JSON.stringify({
-        model,
+        model: finalModel,
         messages: [
           { role: 'system', content: systemPrompt },
           { role: 'user', content: userPrompt }
