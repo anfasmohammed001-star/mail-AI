@@ -46,7 +46,7 @@ export async function GET() {
     });
 
     // Generate daily traffic for the last 7 days
-    const chartData = [];
+    const chartData: any[] = [];
     for (let i = 6; i >= 0; i--) {
       const d = new Date();
       d.setDate(d.getDate() - i);

@@ -39,6 +39,7 @@ interface ReceivedEmail {
   extractedInfo: string | null;
   aiReplyDraft: string | null;
   aiReplyStatus: string;
+  contactId?: string | null;
   contact?: { id: string; name: string } | null;
 }
 

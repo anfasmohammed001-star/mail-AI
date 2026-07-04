@@ -26,6 +26,7 @@ interface Template {
   name: string;
   subject: string;
   body: string;
+  isActive: boolean;
 }
 
 interface AttachmentFile {

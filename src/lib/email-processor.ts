@@ -159,7 +159,7 @@ ${emailRecord.body || ''}`;
     body: updatedEmail.body || '',
   };
 
-  let smtpConfig = null;
+  let smtpConfig: any = null;
   if (map.smtp_host && map.smtp_email && map.smtp_password) {
     smtpConfig = {
       host: map.smtp_host,

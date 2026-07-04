@@ -33,7 +33,7 @@ export async function POST() {
       'Just wanted to follow up on our conversation from last week. Have you had a chance to review the proposal?',
     ];
 
-    const receivedEmails = [];
+    const receivedEmails: any[] = [];
     const count = Math.min(contacts.length, 8);
 
     for (let i = 0; i < count; i++) {

@@ -41,7 +41,7 @@ export async function POST(request: NextRequest) {
       }
 
       // Execute PowerShell script to create shortcut
-      return new Promise((resolve) => {
+      return new Promise<NextResponse>((resolve) => {
         exec(`powershell.exe -ExecutionPolicy Bypass -File "${psScript}"`, async (err, stdout, stderr) => {
           if (err) {
             console.error('PowerShell startup setup failed:', stderr);

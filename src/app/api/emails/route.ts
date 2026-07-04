@@ -240,13 +240,13 @@ async function handleBulkSend(
     where: { id: { in: contactIds } },
   });
 
-  let template = null;
+  let template: any = null;
   if (templateId) {
     template = await db.emailTemplate.findUnique({ where: { id: templateId } });
   }
 
   const smtpConfig = await getSmtpConfig();
-  const results = [];
+  const results: any[] = [];
   let successCount = 0;
   let failCount = 0;
   const errors: string[] = [];
