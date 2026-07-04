@@ -3,13 +3,19 @@ import crypto from 'crypto';
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 12;
 
-function getEncryptionKey(): Buffer {
-  // Use a user-configured key from environment variables, or fall back to a computer-unique key
+function getEncryptionKey(legacy: boolean = false): Buffer {
   const envKey = process.env.ENCRYPTION_KEY;
-  const computerName = process.env.COMPUTERNAME || process.env.HOSTNAME || 'local_agent_dev';
-  const finalSecret = envKey || `secure_salt_${computerName}_mail_agent_key_hash_32_bytes_long!!`;
+  let finalSecret = envKey;
   
-  // Use scrypt to derive a consistent 32-byte key
+  if (!finalSecret) {
+    if (legacy) {
+      const computerName = process.env.COMPUTERNAME || process.env.HOSTNAME || 'local_agent_dev';
+      finalSecret = `secure_salt_${computerName}_mail_agent_key_hash_32_bytes_long!!`;
+    } else {
+      finalSecret = 'stable_fallback_mail_agent_key_hash_32_bytes_long_default';
+    }
+  }
+  
   return crypto.scryptSync(finalSecret, 'mail_agent_salt', 32);
 }
 
@@ -21,7 +27,7 @@ export function encrypt(text: string): string {
   if (!text) return '';
   try {
     const iv = crypto.randomBytes(IV_LENGTH);
-    const cipher = crypto.createCipheriv(ALGORITHM, getEncryptionKey(), iv);
+    const cipher = crypto.createCipheriv(ALGORITHM, getEncryptionKey(false), iv);
     let encrypted = cipher.update(text, 'utf8', 'hex');
     encrypted += cipher.final('hex');
     const authTag = cipher.getAuthTag().toString('hex');
@@ -48,11 +54,21 @@ export function decrypt(cipherText: string): string {
     const encrypted = Buffer.from(encryptedHex, 'hex');
     const authTag = Buffer.from(authTagHex, 'hex');
     
-    const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(), iv);
-    decipher.setAuthTag(authTag);
-    let decrypted = decipher.update(encrypted, undefined, 'utf8');
-    decrypted += decipher.final('utf8');
-    return decrypted;
+    // Try decrypting with new stable key first
+    try {
+      const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(false), iv);
+      decipher.setAuthTag(authTag);
+      let decrypted = decipher.update(encrypted, undefined, 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    } catch (stableErr) {
+      // Fallback: try decrypting with legacy computer-name key
+      const decipher = crypto.createDecipheriv(ALGORITHM, getEncryptionKey(true), iv);
+      decipher.setAuthTag(authTag);
+      let decrypted = decipher.update(encrypted, undefined, 'utf8');
+      decrypted += decipher.final('utf8');
+      return decrypted;
+    }
   } catch (err) {
     // If decryption fails, it could be clear text, so return as-is
     return cipherText;
