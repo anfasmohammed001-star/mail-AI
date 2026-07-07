@@ -1,38 +1,31 @@
-import { PrismaClient } from '@prisma/client'
-import fs from 'fs'
-import path from 'path'
+import { PrismaClient } from '@prisma/client';
 
-if (process.env.VERCEL) {
-  const tmpDbPath = '/tmp/custom.db';
-  if (!fs.existsSync(tmpDbPath)) {
-    try {
-      const sourceDbRoot = path.join(process.cwd(), 'db', 'custom.db');
-      const sourceDbPrisma = path.join(process.cwd(), 'prisma', 'db', 'custom.db');
-      
-      if (fs.existsSync(sourceDbRoot)) {
-        fs.copyFileSync(sourceDbRoot, tmpDbPath);
-      } else if (fs.existsSync(sourceDbPrisma)) {
-        fs.copyFileSync(sourceDbPrisma, tmpDbPath);
-      }
-    } catch (e) {
-      console.error('Failed to copy db to /tmp', e);
-    }
-  }
+const databaseUrl = process.env.DATABASE_URL ?? 'file:./db/custom.db';
+
+if (process.env.VERCEL && databaseUrl.startsWith('file:')) {
+  // Warn strongly: file-based sqlite on Vercel will not persist across deployments
+  // and should not be used as the production database. Set a persistent DB URL.
+  console.warn(
+    '⚠️ Running on Vercel with a file-based sqlite DATABASE_URL. This will NOT persist across deployments. ' +
+      'Set a persistent DATABASE_URL (Postgres/Supabase) in Vercel env for production.'
+  );
 }
 
-const globalForPrisma = globalThis as unknown as {
-  prisma: PrismaClient | undefined
-}
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
 
 export const db =
   globalForPrisma.prisma ??
   new PrismaClient({
     log: ['query'],
-    datasources: process.env.VERCEL ? {
-      db: {
-        url: 'file:/tmp/custom.db'
-      }
-    } : undefined
-  })
+    // If DATABASE_URL is set to a file-based sqlite in development that's fine.
+    // In production prefer a persistent provider (postgres, supabase, etc.).
+    datasources: process.env.DATABASE_URL
+      ? {
+          db: {
+            url: databaseUrl,
+          },
+        }
+      : undefined,
+  });
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
