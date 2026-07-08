@@ -1,23 +1,20 @@
 import { PrismaClient } from '@prisma/client'
-import fs from 'fs'
-import path from 'path'
+import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { createClient } from '@libsql/client'
 
-if (process.env.VERCEL) {
-  const tmpDbPath = '/tmp/custom.db';
-  if (!fs.existsSync(tmpDbPath)) {
-    try {
-      const sourceDbRoot = path.join(process.cwd(), 'db', 'custom.db');
-      const sourceDbPrisma = path.join(process.cwd(), 'prisma', 'db', 'custom.db');
-      
-      if (fs.existsSync(sourceDbRoot)) {
-        fs.copyFileSync(sourceDbRoot, tmpDbPath);
-      } else if (fs.existsSync(sourceDbPrisma)) {
-        fs.copyFileSync(sourceDbPrisma, tmpDbPath);
-      }
-    } catch (e) {
-      console.error('Failed to copy db to /tmp', e);
-    }
+function createPrismaClient(): PrismaClient {
+  const url = process.env.TURSO_DATABASE_URL
+  const authToken = process.env.TURSO_AUTH_TOKEN
+
+  if (!url) {
+    throw new Error('TURSO_DATABASE_URL environment variable is not set')
   }
+
+  const libsql = createClient({ url, authToken })
+  const adapter = new PrismaLibSql(libsql)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new PrismaClient({ adapter } as any)
 }
 
 const globalForPrisma = globalThis as unknown as {
@@ -26,13 +23,6 @@ const globalForPrisma = globalThis as unknown as {
 
 export const db =
   globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-    datasources: process.env.VERCEL ? {
-      db: {
-        url: 'file:/tmp/custom.db'
-      }
-    } : undefined
-  })
+  createPrismaClient()
 
 if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
