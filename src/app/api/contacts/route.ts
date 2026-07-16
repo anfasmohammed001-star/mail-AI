@@ -113,6 +113,15 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'Contact ID is required' }, { status: 400 });
     }
 
+    // Delete related SentEmail records to prevent foreign key constraint violations
+    await db.sentEmail.deleteMany({ where: { contactId: id } });
+
+    // Set contactId to null in related ReceivedEmail records to preserve history but remove the association
+    await db.receivedEmail.updateMany({
+      where: { contactId: id },
+      data: { contactId: null },
+    });
+
     const contact = await db.contact.delete({ where: { id } });
 
     await db.activityLog.create({

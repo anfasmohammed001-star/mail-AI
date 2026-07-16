@@ -1,34 +1,33 @@
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client'
+import { PrismaLibSql } from '@prisma/adapter-libsql'
+import { createClient } from '@libsql/client'
 
-// Prefer explicit DATABASE_URL. Default to local sqlite only for local development.
-const databaseUrl = process.env.DATABASE_URL ?? 'file:./db/custom.db';
-
-// On Vercel (or any ephemeral host) warn strongly when using file-based sqlite.
-// Do not throw during build — this allows deployments to proceed while you
-// provision a persistent DATABASE_URL. This is a temporary measure; use a
-// persistent Postgres/Supabase DB in production to ensure data persists.
-if (process.env.VERCEL && databaseUrl.startsWith('file:')) {
-  console.warn(
-    '\n\n⚠️ WARNING: App is running on Vercel with a file-based sqlite DATABASE_URL.\n' +
-      'This environment is ephemeral and file-based sqlite will NOT persist across deployments.\n' +
-      'Set a persistent DATABASE_URL (Postgres/Supabase/PlanetScale) in your Vercel Environment Variables.\n' +
-      'Example (Postgres): postgres://username:password@host:5432/dbname\n\n'
-  );
+if (process.env.VERCEL && process.env.TURSO_DATABASE_URL) {
+  process.env.DATABASE_URL = process.env.TURSO_DATABASE_URL
 }
 
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+
+function createPrismaClient(): PrismaClient {
+  const url = process.env.TURSO_DATABASE_URL
+  const authToken = process.env.TURSO_AUTH_TOKEN
+
+  if (!url) {
+    throw new Error('TURSO_DATABASE_URL environment variable is not set')
+  }
+
+  const libsql = createClient({ url, authToken })
+  const adapter = new PrismaLibSql(libsql)
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  return new PrismaClient({ adapter } as any)
+}
+
+const globalForPrisma = globalThis as unknown as {
+  prisma: PrismaClient | undefined
+}
 
 export const db =
   globalForPrisma.prisma ??
-  new PrismaClient({
-    log: ['query'],
-    datasources: process.env.DATABASE_URL
-      ? {
-          db: {
-            url: databaseUrl,
-          },
-        }
-      : undefined,
-  });
+  createPrismaClient()
 
-if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db;
+if (process.env.NODE_ENV !== 'production') globalForPrisma.prisma = db
