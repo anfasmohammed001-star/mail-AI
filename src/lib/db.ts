@@ -2,8 +2,8 @@ import { PrismaClient } from '@prisma/client'
 import { PrismaLibSql } from '@prisma/adapter-libsql'
 import { createClient } from '@libsql/client'
 
-if (process.env.VERCEL && process.env.TURSO_DATABASE_URL) {
-  process.env.DATABASE_URL = process.env.TURSO_DATABASE_URL
+if (process.env.VERCEL) {
+  process.env.DATABASE_URL = process.env.TURSO_DATABASE_URL || 'libsql://dummy-db.turso.io'
 }
 
 
