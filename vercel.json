@@ -1,12 +1,14 @@
 {
   "env": {
     "TURSO_DATABASE_URL": "@turso_database_url",
-    "TURSO_AUTH_TOKEN": "@turso_auth_token"
+    "TURSO_AUTH_TOKEN": "@turso_auth_token",
+    "DATABASE_URL": "@turso_database_url"
   },
   "build": {
     "env": {
       "TURSO_DATABASE_URL": "@turso_database_url",
-      "TURSO_AUTH_TOKEN": "@turso_auth_token"
+      "TURSO_AUTH_TOKEN": "@turso_auth_token",
+      "DATABASE_URL": "@turso_database_url"
     }
   }
 }
