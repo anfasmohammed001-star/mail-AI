@@ -321,7 +321,7 @@ The Team`,
             <div className="grid gap-3 max-h-[500px] overflow-y-auto">
               {templates.map((template) => (
                 <div key={template.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
-                  <div className="flex items-start justify-between gap-3">
+                  <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 mb-1">
                         <h4 className="font-semibold text-sm">{template.name}</h4>

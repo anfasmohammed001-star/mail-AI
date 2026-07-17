@@ -1,0 +1,156 @@
+{
+  "templates": [
+    {
+      "id": "cmqvoeexa007vw0gk5j4rsqdh",
+      "name": "Specify email for individual company.",
+      "subject": "Application for {{Job Title}} Position – Mohammed Anfas",
+      "body": "Dear Hiring Team,\n\nI hope you are doing well.\n\nI am writing to express my interest in the {{Job Title}} position at {{Company}}. I believe my skills, hands-on project experience, and enthusiasm for learning make me a strong candidate for this opportunity.\n\nI have attached my CV and Portfolio for your review. They provide detailed information about my technical skills, projects, certifications, and achievements. My portfolio includes practical projects in Data Analytics, Full Stack Development, AI Engineering, and related technologies. Many of these projects were developed using modern AI-assisted development tools, enabling me to build real-world solutions while continuously improving my technical and problem-solving abilities.\n\nAlthough my professional experience has been in a client-facing role, I have dedicated significant time to developing technical skills and completing practical projects that prepare me for an entry-level IT career.\n\nI am currently employed, so I would greatly appreciate it if the initial interview rounds could be conducted online, as I am presently available only for virtual interviews.\n\nIf this particular position has already been filled, I would be grateful if you could consider my profile for any other suitable current or future opportunities within {{Company}}.\n\nThank you for your time and consideration. I look forward to the opportunity to discuss how I can contribute to your team.\n\nBest Regards,\n\nMohammed Anfas\n8921485944",
+      "category": "general",
+      "isActive": true,
+      "createdAt": "2026-06-27T01:23:05.614Z",
+      "updatedAt": "2026-06-27T01:23:05.614Z"
+    },
+    {
+      "id": "cmqx76pjk002aw0lo7a9l8vnp",
+      "name": "Technical Interview Invitation",
+      "subject": "Interview Invitation: Technical Developer Position",
+      "body": "Hi {{Candidate Name}},\n\nThanks for your application for the {{Job Title}} role. We were very impressed by your background and would like to invite you for a technical interview next week.\n\nLooking forward to speaking with you!\n\nBest regards,\n{{Your Name}}",
+      "category": "general",
+      "isActive": true,
+      "createdAt": "2026-06-28T02:56:45.008Z",
+      "updatedAt": "2026-06-28T02:56:45.008Z"
+    },
+    {
+      "id": "cmr5877760021w0bk4d2kl1na",
+      "name": "common job mail",
+      "subject": "Application for Entry-Level Opportunities",
+      "body": "Dear Hiring Team,\n\nI hope you are doing well.\n\nI am writing to express my interest in any entry-level opportunities available at your organization, particularly in Data Analytics, Full Stack Development, AI Engineering, and related technology roles.\n\nI have attached my CV and Portfolio for your review. The attached documents contain details about my skills, projects, technical expertise, and achievements. Most of my projects have been developed with the support of modern AI tools, which has helped me build practical solutions and strengthen my development and analytical skills.\n\nI would appreciate it if you could consider my profile for any suitable current or future openings within your organization.\n\nThank you for your time and consideration. I look forward to hearing from you.\n\nBest Regards,\nMohammed Anfas\nPhone: 8921485944\nEmail: mohammedanfas012@gmail.com\nLinkedIn :www.linkedin.com/in/mohammed-anfas-j\nPortfolio: portfolio-gold-kappa-79.vercel.app",
+      "category": "general",
+      "isActive": true,
+      "createdAt": "2026-07-03T17:47:16.914Z",
+      "updatedAt": "2026-07-03T17:47:16.914Z"
+    }
+  ],
+  "rules": [],
+  "configs": [
+    {
+      "id": "cmqvnhvlv0000w0gkk3pn7jfk",
+      "key": "smtp_host",
+      "value": "smtp.gmail.com",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:31.887Z"
+    },
+    {
+      "id": "cmqvnhvmt0001w0gk2hctozfq",
+      "key": "smtp_port",
+      "value": "587",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.036Z"
+    },
+    {
+      "id": "cmqvnhvn30002w0gkrpqz4ez1",
+      "key": "smtp_email",
+      "value": "mohammedanfas012@gmail.com",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.044Z"
+    },
+    {
+      "id": "cmqvnhvpb0003w0gkgtjhh6oj",
+      "key": "smtp_password",
+      "value": "284600bd424dde7986572d8c:64f29a3aac6cf0dcc74281f8b7068b538ae70c:0ef83ddb0c1481dde9bf24f8888363d5",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.054Z"
+    },
+    {
+      "id": "cmqvnhvpp0004w0gkk57mp5p0",
+      "key": "smtp_from_name",
+      "value": "Mohammed Anfas. J",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.061Z"
+    },
+    {
+      "id": "cmqvnhvq00005w0gkr51mqsvk",
+      "key": "smtp_secure",
+      "value": "false",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.071Z"
+    },
+    {
+      "id": "cmqvnhvqc0006w0gkxgcjdngt",
+      "key": "imap_host",
+      "value": "imap.gmail.com",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.081Z"
+    },
+    {
+      "id": "cmqvnhvqr0007w0gk2tzaz4x4",
+      "key": "imap_port",
+      "value": "993",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.089Z"
+    },
+    {
+      "id": "cmqvnhvr10008w0gkwaduraxo",
+      "key": "imap_email",
+      "value": "mohammedanfas012@gmail.com",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.097Z"
+    },
+    {
+      "id": "cmqvnhvrc0009w0gkglgiyg11",
+      "key": "imap_password",
+      "value": "284600bd424dde7986572d8c:64f29a3aac6cf0dcc74281f8b7068b538ae70c:0ef83ddb0c1481dde9bf24f8888363d5",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.106Z"
+    },
+    {
+      "id": "cmqvnhvrm000aw0gkf07wsyqo",
+      "key": "imap_secure",
+      "value": "true",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-05T01:29:32.114Z"
+    },
+    {
+      "id": "cmqvnhvrx000bw0gkajcac1ea",
+      "key": "ai_enabled",
+      "value": "true",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-04T16:35:01.161Z"
+    },
+    {
+      "id": "cmqvnhvs8000cw0gk50szqzou",
+      "key": "ai_provider",
+      "value": "nvidia_nim",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-04T16:35:01.096Z"
+    },
+    {
+      "id": "cmqvnhvsj000dw0gkbdz3udl0",
+      "key": "ai_endpoint",
+      "value": "https://integrate.api.nvidia.com",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-04T16:35:01.145Z"
+    },
+    {
+      "id": "cmqvnhvst000ew0gkw1nwun6h",
+      "key": "ai_model",
+      "value": "zai-org/GLM-5.2",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-04T16:35:01.136Z"
+    },
+    {
+      "id": "cmqvnhvt5000fw0gkc2cud3ca",
+      "key": "ai_api_key",
+      "value": "92680b24e33e9db827916674:8916912f154f791a1259872ffcdaf157499f0b37142e070ada2b487303f84ca44f8e3ad1e876c65ee4a67e2f0dfe7e26e007aa3d95c3322ffa5551676c392845c271b4b7b563:56978fa2ed0f3adc506448e9f9336971",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-04T16:35:01.153Z"
+    },
+    {
+      "id": "cmqvnhvth000gw0gkn03wybej",
+      "key": "auto_reply_enabled",
+      "value": "false",
+      "isEncrypted": false,
+      "updatedAt": "2026-07-04T01:37:23.300Z"
+    }
+  ]
+}

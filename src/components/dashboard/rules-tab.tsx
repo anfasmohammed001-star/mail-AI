@@ -234,7 +234,7 @@ The Team`,
                         </Button>
                       </div>
                       {form.conditions.map((cond, index) => (
-                        <div key={index} className="flex items-end gap-2">
+                        <div key={index} className="flex flex-col sm:flex-row sm:items-end gap-2 bg-muted/10 p-3 rounded-lg border sm:bg-transparent sm:p-0 sm:border-0">
                           <div className="flex-1">
                             <Label className="text-xs">Field</Label>
                             <Select value={cond.field} onValueChange={(v) => updateCondition(index, 'field', v)}>
@@ -306,7 +306,7 @@ The Team`,
                 const conditions: Condition[] = JSON.parse(rule.conditions);
                 return (
                   <div key={rule.id} className="border rounded-lg p-4 hover:shadow-sm transition-shadow">
-                    <div className="flex items-start justify-between gap-3">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4">
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           <h4 className="font-semibold text-sm">{rule.name}</h4>

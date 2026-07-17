@@ -20,7 +20,8 @@ import {
   CornerUpLeft,
   X,
   AlertCircle,
-  FileText
+  FileText,
+  ArrowLeft
 } from 'lucide-react';
 
 interface ReceivedEmail {
@@ -251,9 +252,9 @@ export function InboxTab() {
   };
 
   return (
-    <div className="flex gap-6 h-[calc(100vh-12rem)] border rounded-xl overflow-hidden bg-card">
+    <div className="flex flex-col md:flex-row gap-6 h-[calc(100vh-12rem)] border rounded-xl overflow-hidden bg-card">
       {/* Sidebar List Pane */}
-      <div className="w-96 border-r flex flex-col h-full bg-muted/5 shrink-0">
+      <div className={`w-full md:w-96 border-r flex flex-col h-full bg-muted/5 shrink-0 ${selectedEmail ? 'hidden md:flex' : 'flex'}`}>
         <div className="p-4 border-b space-y-3 bg-muted/10">
           <div className="flex items-center justify-between">
             <h3 className="font-bold text-sm flex items-center gap-2">
@@ -382,11 +383,21 @@ export function InboxTab() {
       </div>
 
       {/* Main Email Reader Details Pane */}
-      <div className="flex-1 flex flex-col h-full overflow-y-auto p-6 space-y-6">
+      <div className={`flex-1 flex flex-col h-full overflow-y-auto p-4 sm:p-6 space-y-6 ${selectedEmail ? 'flex' : 'hidden md:flex'}`}>
         {selectedEmail ? (
           <>
+            {/* Mobile Back Button */}
+            <Button
+              variant="ghost"
+              size="sm"
+              className="md:hidden self-start gap-1.5 text-xs font-semibold mb-2"
+              onClick={() => setSelectedEmail(null)}
+            >
+              <ArrowLeft className="w-4 h-4" /> Back to Inbox
+            </Button>
+
             {/* Header Toolbar */}
-            <div className="flex items-center justify-between pb-4 border-b">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-4 border-b">
               <div>
                 <h2 className="text-base font-bold tracking-tight">{selectedEmail.subject}</h2>
                 <div className="flex items-center gap-2 mt-1.5 text-xs text-muted-foreground">

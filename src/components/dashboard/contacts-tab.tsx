@@ -586,7 +586,7 @@ export function ContactsTab() {
             </div>
           ) : (
             <div className="border rounded-xl overflow-hidden shadow-inner bg-muted/5">
-              <div className="max-h-[500px] overflow-y-auto">
+              <div className="max-h-[500px] overflow-y-auto overflow-x-auto">
                 <Table>
                   <TableHeader className="bg-muted/20">
                     <TableRow>

@@ -111,7 +111,7 @@ function SidebarContent({
         <div className="flex items-center justify-between pt-1">
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground px-2">
             <Database className="w-3.5 h-3.5 text-blue-500" />
-            <span className="font-medium text-[11px]">SQLite Connected</span>
+            <span className="font-medium text-[11px]">Supabase Connected</span>
           </div>
 
           {mounted && (
