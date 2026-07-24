@@ -32,7 +32,7 @@ interface SidebarContentProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   theme: string | undefined;
-  setTheme: (theme: string) => void;
+  setTheme: (theme: any) => void;
   mounted: boolean;
   onItemClick?: () => void;
 }

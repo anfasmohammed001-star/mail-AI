@@ -18,28 +18,44 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No valid contacts provided' }, { status: 400 });
     }
 
-    // Format for Prisma insert
-    const dataToInsert = validContacts.map((c) => ({
-      name: c.name.trim(),
-      email: c.email.trim().toLowerCase(),
-      company: c.company?.trim() || null,
-      phone: c.phone?.trim() || null,
-      customFields: c.customFields ? JSON.stringify(c.customFields) : null,
-    }));
+    // Format and deduplicate incoming payload contacts by lowercased email
+    const seenEmailsInPayload = new Set<string>();
+    const deduplicatedPayload: Array<{
+      name: string;
+      email: string;
+      company: string | null;
+      phone: string | null;
+      customFields: string | null;
+    }> = [];
 
-    // Filter out existing emails to avoid duplicates on SQLite
-    const emailsToInsert = dataToInsert.map(d => d.email);
+    for (const c of validContacts) {
+      const normalizedEmail = c.email.trim().toLowerCase();
+      if (!seenEmailsInPayload.has(normalizedEmail)) {
+        seenEmailsInPayload.add(normalizedEmail);
+        deduplicatedPayload.push({
+          name: c.name.trim(),
+          email: normalizedEmail,
+          company: c.company?.trim() || null,
+          phone: c.phone?.trim() || null,
+          customFields: c.customFields ? JSON.stringify(c.customFields) : null,
+        });
+      }
+    }
+
+    // Filter out existing emails in the database to avoid duplicate key errors
+    const emailsToInsert = deduplicatedPayload.map((d) => d.email);
     const existingContacts = await db.contact.findMany({
       where: { email: { in: emailsToInsert } },
-      select: { email: true }
+      select: { email: true },
     });
-    const existingEmails = new Set(existingContacts.map(c => c.email));
-    const uniqueDataToInsert = dataToInsert.filter(d => !existingEmails.has(d.email));
+    const existingEmails = new Set(existingContacts.map((c) => c.email.toLowerCase()));
+    const uniqueDataToInsert = deduplicatedPayload.filter((d) => !existingEmails.has(d.email));
 
     let importedCount = 0;
     if (uniqueDataToInsert.length > 0) {
       const result = await db.contact.createMany({
         data: uniqueDataToInsert,
+        skipDuplicates: true,
       });
       importedCount = result.count;
     }
